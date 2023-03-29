@@ -64,10 +64,3 @@ func XorBuffers(buf1 []byte, buf2 []byte) ([]byte, error) {
 	}
 	return res, nil
 }
-
-func Abs[T float32 | float64 | int](a T) T {
-	if a < 0 {
-		return -a
-	}
-	return a
-}

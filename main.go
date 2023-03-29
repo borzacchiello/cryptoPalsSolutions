@@ -116,6 +116,61 @@ func ex_1_6() {
 	fmt.Printf("  recovered text:\n%s\n", utils.EncryptXor(enc, key))
 }
 
+func ex_1_7() {
+	plaintext := []byte("barbabietola da zucchero")
+	key := []byte("YELLOW SUBMARINE")
+	ciphertext, err := utils.EncyptAES_ECB(plaintext, key)
+	if err != nil {
+		panic(err)
+	}
+
+	decoded1, err := utils.DecryptAES_ECB(ciphertext, key)
+	if err != nil {
+		panic(err)
+	}
+
+	data, err := os.ReadFile("data/7.txt")
+	if err != nil {
+		panic(err)
+	}
+	ciphertext, err = utils.FromBase64(string(data))
+	if err != nil {
+		panic(err)
+	}
+
+	decoded2, err := utils.DecryptAES_ECB(ciphertext, key)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("ex_1_7:")
+	fmt.Printf("  decoded1: %s\n", decoded1)
+	fmt.Printf("  decoded2: %s\n", decoded2)
+}
+
+func ex_1_8() {
+	readFile, err := os.Open("data/8.txt")
+	if err != nil {
+		panic(err)
+	}
+	defer readFile.Close()
+
+	fileScanner := bufio.NewScanner(readFile)
+	fileScanner.Split(bufio.ScanLines)
+
+	fmt.Println("ex_1_8:")
+	for fileScanner.Scan() {
+		hexBuf := fileScanner.Text()
+		buf, err := utils.HexToBytes(hexBuf)
+		if err != nil {
+			panic(err)
+		}
+		if utils.DetectECB(buf) {
+			fmt.Printf("  block \"%s ...\" was (probably) encoded with ECB\n", hexBuf[:16])
+		}
+	}
+}
+
 func main() {
 	ex_1_1()
 	ex_1_2()
@@ -123,4 +178,6 @@ func main() {
 	ex_1_4()
 	ex_1_5()
 	ex_1_6()
+	ex_1_7()
+	ex_1_8()
 }

@@ -3,7 +3,46 @@ package utils
 import (
 	"bytes"
 	"crypto/aes"
+	"fmt"
 )
+
+func Pad_PKCS7(data []byte, block_size int) []byte {
+	if block_size <= 0 || block_size >= 256 {
+		panic("invalid block size")
+	}
+
+	padNum := len(data) % block_size
+	if padNum == 0 {
+		padNum = block_size
+	}
+
+	pad := make([]byte, padNum)
+	for i := 0; i < padNum; i++ {
+		pad[i] = byte(padNum)
+	}
+	return append(data, pad[:]...)
+}
+
+func Unpad_PKCS7(data []byte, block_size int) ([]byte, error) {
+	if block_size <= 0 || block_size >= 256 {
+		panic("invalid block size")
+	}
+	if len(data)%block_size != 0 {
+		return nil, fmt.Errorf("data length (%d) is not a multiple of block_size (%d)", len(data), block_size)
+	}
+
+	padNum := uint(data[len(data)-1])
+	if padNum >= uint(block_size) || padNum == 0 || padNum >= uint(len(data)) {
+		return nil, fmt.Errorf("invalid padding byte %d", padNum)
+	}
+
+	for off := uint(0); off < padNum; off++ {
+		if data[len(data)-int(off)-1] != byte(padNum) {
+			return nil, fmt.Errorf("invalid padding")
+		}
+	}
+	return data[:len(data)-int(padNum)], nil
+}
 
 func EncyptAES_ECB(plaintext []byte, key []byte) ([]byte, error) {
 	cipher, err := aes.NewCipher(key)
@@ -11,22 +50,12 @@ func EncyptAES_ECB(plaintext []byte, key []byte) ([]byte, error) {
 		return nil, err
 	}
 
+	plaintext = Pad_PKCS7(plaintext, 16)
 	ciphertext := make([]byte, len(plaintext))
 	i := 0
 	for i+15 < len(plaintext) {
 		cipher.Encrypt(ciphertext[i:i+16], plaintext[i:i+16])
 		i += 16
-	}
-
-	if i < len(plaintext) {
-		block := make([]byte, 16)
-		num_el := copy(block, plaintext[i:])
-		padding_size := byte(16 - num_el)
-		block[num_el] = padding_size
-		for j := 0; j < int(padding_size); j++ {
-			ciphertext = append(ciphertext, 0)
-		}
-		cipher.Encrypt(ciphertext[i:], block)
 	}
 	return ciphertext, nil
 }
@@ -44,14 +73,9 @@ func DecryptAES_ECB(ciphertext []byte, key []byte) ([]byte, error) {
 		i += 16
 	}
 
-	// Check for padding, and eventually remove it
-	j := len(plaintext) - 1
-	for j >= 0 && plaintext[j] == 0 {
-		j--
-	}
-	len_padding := int(plaintext[j])
-	if len_padding == len(plaintext)-j {
-		plaintext = plaintext[:len(plaintext)-len_padding]
+	plaintext, err = Unpad_PKCS7(plaintext, 16)
+	if err != nil {
+		return nil, err
 	}
 	return plaintext, nil
 }

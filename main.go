@@ -171,6 +171,12 @@ func ex_1_8() {
 	}
 }
 
+func ex_2_9() {
+	buf := "ciao"
+	fmt.Println("ex_2_9:")
+	fmt.Printf("  padded: %s\n", utils.BytesToHex(utils.Pad_PKCS7([]byte(buf), 16)))
+}
+
 func main() {
 	ex_1_1()
 	ex_1_2()
@@ -180,4 +186,5 @@ func main() {
 	ex_1_6()
 	ex_1_7()
 	ex_1_8()
+	ex_2_9()
 }

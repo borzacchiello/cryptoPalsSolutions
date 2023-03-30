@@ -98,3 +98,70 @@ func DetectECB(ciphertext []byte) bool {
 	}
 	return false
 }
+
+func EncyptAES_CBC(plaintext []byte, key []byte) ([]byte, error) {
+	cipher, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	plaintext = Pad_PKCS7(plaintext, 16)
+	ciphertext := make([]byte, len(plaintext))
+
+	fmt.Printf("plaintext: %s\n", BytesToHex(plaintext))
+
+	iv := make([]byte, 16)
+	for i := range iv {
+		iv[i] = byte('0')
+	}
+
+	prev_ciphertext_block := iv
+	curr_ciphertext_block := make([]byte, 16)
+
+	i := 0
+	for i+15 < len(plaintext) {
+		plaintext_block := plaintext[i : i+16]
+		plaintext_xored, _ := XorBuffers(plaintext_block, prev_ciphertext_block)
+		cipher.Encrypt(curr_ciphertext_block, plaintext_xored)
+		copy(ciphertext[i:i+16], curr_ciphertext_block)
+		prev_ciphertext_block = curr_ciphertext_block
+		i += 16
+	}
+	return ciphertext, nil
+}
+
+func DecyptAES_CBC(ciphertext []byte, key []byte) ([]byte, error) {
+	if len(ciphertext)%16 != 0 {
+		return nil, fmt.Errorf("invalid ciphertext len: %d", len(ciphertext))
+	}
+	cipher, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	plaintext := make([]byte, len(ciphertext))
+
+	iv := make([]byte, 16)
+	for i := range iv {
+		iv[i] = byte('0')
+	}
+
+	prev_ciphertext_block := iv
+	curr_plaintext_block_xored := make([]byte, 16)
+
+	i := 0
+	for i+15 < len(ciphertext) {
+		ciphertext_block := ciphertext[i : i+16]
+		cipher.Decrypt(curr_plaintext_block_xored, ciphertext_block)
+		plaintext_block, _ := XorBuffers(curr_plaintext_block_xored, prev_ciphertext_block)
+		copy(plaintext[i:i+16], plaintext_block)
+		prev_ciphertext_block = ciphertext_block
+		i += 16
+	}
+
+	plaintext, err = Unpad_PKCS7(plaintext, 16)
+	if err != nil {
+		return nil, err
+	}
+	return plaintext, nil
+}

@@ -177,6 +177,36 @@ func ex_2_9() {
 	fmt.Printf("  padded: %s\n", utils.BytesToHex(utils.Pad_PKCS7([]byte(buf), 16)))
 }
 
+func ex_2_10() {
+	plain := []byte("barbabietola da zucchero")
+	key := []byte("YELLOW SUBMARINE")
+	ciphertext1, err := utils.EncyptAES_CBC(plain, key)
+	if err != nil {
+		panic(err)
+	}
+
+	data, err := os.ReadFile("data/10.txt")
+	if err != nil {
+		panic(err)
+	}
+	ciphertext2, err := utils.FromBase64(string(data))
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("ex_2_10:")
+	dec1, err := utils.DecyptAES_CBC(ciphertext1, key)
+	if err != nil {
+		panic(err)
+	}
+	dec2, err := utils.DecyptAES_CBC(ciphertext2, key)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("  dec1: %s\n", dec1)
+	fmt.Printf("  dec2: %s\n", dec2)
+}
+
 func main() {
 	ex_1_1()
 	ex_1_2()
@@ -187,4 +217,5 @@ func main() {
 	ex_1_7()
 	ex_1_8()
 	ex_2_9()
+	ex_2_10()
 }

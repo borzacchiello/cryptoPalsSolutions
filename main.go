@@ -207,6 +207,17 @@ func ex_2_10() {
 	fmt.Printf("  dec2: %s\n", dec2)
 }
 
+func ex_2_11() {
+	fmt.Println("ex_2_11:")
+	for i := 0; i < 20; i++ {
+		if utils.IsECBCypherType(utils.EncryptRandom) {
+			fmt.Println("^ is ECB")
+		} else {
+			fmt.Println("^ is not ECB")
+		}
+	}
+}
+
 func main() {
 	ex_1_1()
 	ex_1_2()
@@ -218,4 +229,5 @@ func main() {
 	ex_1_8()
 	ex_2_9()
 	ex_2_10()
+	ex_2_11()
 }

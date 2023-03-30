@@ -108,8 +108,6 @@ func EncyptAES_CBC(plaintext []byte, key []byte) ([]byte, error) {
 	plaintext = Pad_PKCS7(plaintext, 16)
 	ciphertext := make([]byte, len(plaintext))
 
-	fmt.Printf("plaintext: %s\n", BytesToHex(plaintext))
-
 	iv := make([]byte, 16)
 	for i := range iv {
 		iv[i] = byte('0')
@@ -164,4 +162,9 @@ func DecyptAES_CBC(ciphertext []byte, key []byte) ([]byte, error) {
 		return nil, err
 	}
 	return plaintext, nil
+}
+
+func IsECBCypherType(oracle func([]byte) []byte) bool {
+	data := make([]byte, 16*3)
+	return DetectECB(oracle(data))
 }

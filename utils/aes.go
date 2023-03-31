@@ -11,11 +11,7 @@ func Pad_PKCS7(data []byte, block_size int) []byte {
 		panic("invalid block size")
 	}
 
-	padNum := len(data) % block_size
-	if padNum == 0 {
-		padNum = block_size
-	}
-
+	padNum := (block_size - len(data)%block_size)
 	pad := make([]byte, padNum)
 	for i := 0; i < padNum; i++ {
 		pad[i] = byte(padNum)
@@ -167,4 +163,106 @@ func DecyptAES_CBC(ciphertext []byte, key []byte) ([]byte, error) {
 func IsECBCypherType(oracle func([]byte) []byte) bool {
 	data := make([]byte, 16*3)
 	return DetectECB(oracle(data))
+}
+
+func UnknownPayloadOracle(data []byte) []byte {
+	key := []byte("YELLOW SUBMARINE")
+	unknown_payload, err := FromBase64("" +
+		"Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkg" +
+		"aGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBq" +
+		"dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg" +
+		"YnkK")
+	if err != nil {
+		panic(err)
+	}
+
+	buf := make([]byte, len(data)+len(unknown_payload))
+	copy(buf, data)
+	copy(buf[len(data):], unknown_payload)
+	enc, err := EncyptAES_ECB(buf, key)
+	if err != nil {
+		panic(err)
+	}
+	return enc
+}
+
+func DiscoverBlockSize(oracle func([]byte) []byte) (int, int, error) {
+	// first step: discover padding size, indeed we do not know the size of the unknown payload!
+	prev_size := len(UnknownPayloadOracle([]byte("")))
+	padding_size := -1
+	for i := 1; i < 256; i++ {
+		data := make([]byte, i)
+		curr_size := len(UnknownPayloadOracle(data))
+		if curr_size != prev_size {
+			padding_size = i
+			break
+		}
+		prev_size = curr_size
+	}
+	if padding_size < 0 {
+		return 0, 0, fmt.Errorf("unable to recover padding size")
+	}
+
+	// second step: discover block size
+	data := make([]byte, padding_size)
+	prev_size = len(UnknownPayloadOracle(data))
+	block_size := -1
+	for i := 1; i < 256; i++ {
+		data := make([]byte, padding_size+i)
+		curr_size := len(UnknownPayloadOracle(data))
+		if curr_size != prev_size {
+			block_size = i
+			break
+		}
+		prev_size = curr_size
+	}
+
+	if block_size < 0 {
+		return padding_size, 0, fmt.Errorf("unable to recover block size")
+	}
+	return padding_size, block_size, nil
+}
+
+func recoverBlock(oracleECB func([]byte) []byte, block_size int, recovered []byte) []byte {
+	off := len(recovered)
+	recoveredBlock := make([]byte, block_size)
+	if off > 0 {
+		copy(recoveredBlock, recovered[off-block_size:])
+		for i := 0; i < block_size-1; i++ {
+			recoveredBlock[i] = recoveredBlock[i+1]
+		}
+	}
+
+	for i := 0; i < block_size; i++ {
+		byteToRecover := block_size - i - 1
+		targetBlock := oracleECB(recoveredBlock[:byteToRecover])[off : off+block_size]
+		for i := 0; i < 256; i++ {
+			recoveredBlock[block_size-1] = byte(i)
+			if bytes.Equal(oracleECB(recoveredBlock)[:block_size], targetBlock) {
+				break
+			}
+		}
+		if i != block_size-1 {
+			for i := 0; i < block_size-1; i++ {
+				recoveredBlock[i] = recoveredBlock[i+1]
+			}
+		}
+	}
+	return recoveredBlock
+}
+
+func RecoverUnknownPayload(oracleECB func([]byte) []byte) ([]byte, error) {
+	_, block_size, err := DiscoverBlockSize(oracleECB)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make([]byte, 0)
+	payloadSize := len(oracleECB([]byte("")))
+	blocksToRecover := payloadSize / block_size
+	for i := 0; i < blocksToRecover; i++ {
+		block := recoverBlock(oracleECB, block_size, res)
+		res = append(res, block...)
+	}
+	return res, nil
 }

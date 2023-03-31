@@ -218,6 +218,25 @@ func ex_2_11() {
 	}
 }
 
+func ex_2_12() {
+	fmt.Println("ex_2_11:")
+
+	padding_size, block_size, err := utils.DiscoverBlockSize(utils.UnknownPayloadOracle)
+	if err != nil {
+		panic(err)
+	}
+	is_ecb := utils.IsECBCypherType(utils.UnknownPayloadOracle)
+	unknwon_payload_size := len(utils.UnknownPayloadOracle([]byte(""))) - padding_size
+	fmt.Printf("  padding_size: %d, block_size: %d, unknwon_payload_size: %d, is_ecb: %t\n",
+		padding_size, block_size, unknwon_payload_size, is_ecb)
+	payload, err := utils.RecoverUnknownPayload(utils.UnknownPayloadOracle)
+	if err != nil {
+		panic(err)
+	}
+	payload = payload[:unknwon_payload_size]
+	fmt.Printf("  payload:\n%s\n", payload)
+}
+
 func main() {
 	ex_1_1()
 	ex_1_2()
@@ -230,4 +249,5 @@ func main() {
 	ex_2_9()
 	ex_2_10()
 	ex_2_11()
+	ex_2_12()
 }
